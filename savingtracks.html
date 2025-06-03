@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Applicant Pipeline</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #2e2e2e;
+      color: #ffffff;
+    }
+    #home, #pipeline {
+      max-width: 1000px;
+      margin: auto;
+    }
+    h1, h2 {
+      color: #ffffff;
+    }
+    #positions-list {
+      list-style: none;
+      padding: 0;
+    }
+    #positions-list li {
+      background: #444;
+      color: white;
+      padding: 12px 20px;
+      margin-bottom: 8px;
+      border-radius: 5px;
+      max-width: 400px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #positions-list li span {
+      flex-grow: 1;
+      cursor: pointer;
+    }
+    .position-buttons {
+      display: flex;
+      gap: 5px;
+    }
+    #positions-list li:hover {
+      background: #555;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .column {
+      background: #3a3a3a;
+      padding: 10px;
+      border-radius: 8px;
+      min-height: 200px;
+    }
+    .column h2 {
+      font-size: 16px;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+    .card {
+      background: #ffffff;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      display: flex;
+      flex-direction: column;
+      cursor: grab;
+      color: #000;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .delete-btn, .edit-btn {
+      background-color: red;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      padding: 2px 5px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .edit-btn {
+      background-color: #17a2b8;
+    }
+    .edit-btn:hover {
+      background-color: #117a8b;
+    }
+    .delete-btn:hover {
+      background-color: darkred;
+    }
+    textarea.remarks {
+      width: 100%;
+      height: 50px;
+      font-size: 12px;
+      margin-top: 4px;
+      resize: vertical;
+    }
+    .add-form {
+      margin-top: 10px;
+    }
+    .add-form input {
+      width: calc(100% - 60px);
+      padding: 5px;
+    }
+    .add-form button {
+      padding: 5px 10px;
+    }
+    #back-button {
+      margin-bottom: 15px;
+      padding: 6px 12px;
+      background-color: #555;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #back-button:hover {
+      background-color: #333;
+    }
+    h2.account-name {
+      margin-bottom: 5px;
+      color: #aaa;
+    }
+    .add-position-form {
+      margin-bottom: 15px;
+    }
+    .add-position-form input {
+      padding: 5px;
+      width: 200px;
+    }
+    .add-position-form button {
+      padding: 5px 10px;
+    }
+    #undo-button, #save-all-button, #export-button, #export-csv-button {
+      margin-left: 10px;
+      padding: 6px 12px;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #undo-button { background-color: orange; }
+    #undo-button:hover { background-color: darkorange; }
+    #export-button, #export-csv-button { background-color: green; }
+    #export-button:hover, #export-csv-button:hover { background-color: darkgreen; }
+    #save-all-button { background-color: #1e90ff; }
+    #save-all-button:hover { background-color: #006ad1; }
+  </style>
+</head>
+<body>
+
+  <div id="home">
+    <h1>Select a Position</h1>
+    <form id="add-position-form" class="add-position-form">
+      <input type="text" id="new-position-name" placeholder="New Position" required />
+      <button type="submit">➕</button>
+      <button type="button" id="undo-button">↩️ Undo</button>
+      <button type="button" id="save-all-button">💾 Save All</button>
+      <button type="button" id="export-csv-button">📊 Export All to Excel</button>
+    </form>
+    <ul id="positions-list"></ul>
+  </div>
+
+  <div id="pipeline" style="display:none;">
+    <button id="back-button">← Back to Positions</button>
+    <button id="export-button">⬇️ Download</button>
+    <h2 class="account-name">Account Name: Solaire Resort North</h2>
+    <h1 id="position-title">Applicant Pipeline</h1>
+    <div class="board" id="board"></div>
+  </div>
+
+  <script>
+    const stages = [
+      "Source", "Initial Interview", "Endorsement", "Final Assessment",
+      "Job Offer", "Completion of Requirements", "Orientation", "Deployed",
+      "Backed Out", "Failed"
+    ];
+
+    const positionsData = {};
+    const deletedPositions = [];
+
+    const home = document.getElementById("home");
+    const pipeline = document.getElementById("pipeline");
+    const board = document.getElementById("board");
+    const positionTitle = document.getElementById("position-title");
+    const backButton = document.getElementById("back-button");
+    const positionsList = document.getElementById("positions-list");
+    const addPositionForm = document.getElementById("add-position-form");
+    const newPositionName = document.getElementById("new-position-name");
+    const undoButton = document.getElementById("undo-button");
+    const exportButton = document.getElementById("export-button");
+    const exportCSVButton = document.getElementById("export-csv-button");
+    const saveAllButton = document.getElementById("save-all-button");
+
+    let currentPosition = null;
+
+    function initializePosition(name) {
+      positionsData[name] = {
+        data: {},
+        remarks: {}
+      };
+      stages.forEach(stage => {
+        positionsData[name].data[stage] = [];
+      });
+    }
+
+    function renderPositions() {
+      positionsList.innerHTML = "";
+      for (const position in positionsData) {
+        const li = document.createElement("li");
+        li.dataset.position = position;
+
+        const span = document.createElement("span");
+        span.textContent = position;
+        span.onclick = () => {
+          currentPosition = position;
+          loadPipeline(position);
+        };
+
+        const editBtn = document.createElement("button");
+        editBtn.className = "edit-btn";
+        editBtn.textContent = "✏️";
+        editBtn.onclick = () => {
+          const newName = prompt("Edit position name:", position);
+          if (newName && newName !== position) {
+            positionsData[newName] = positionsData[position];
+            delete positionsData[position];
+            renderPositions();
+          }
+        };
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "delete-btn";
+        delBtn.textContent = "X";
+        delBtn.onclick = () => {
+          deletedPositions.push({ name: position, data: positionsData[position] });
+          delete positionsData[position];
+          renderPositions();
+        };
+
+        li.appendChild(span);
+
+        const buttonGroup = document.createElement("div");
+        buttonGroup.className = "position-buttons";
+        buttonGroup.appendChild(editBtn);
+        buttonGroup.appendChild(delBtn);
+
+        li.appendChild(buttonGroup);
+        positionsList.appendChild(li);
+      }
+    }
+
+    undoButton.onclick = () => {
+      const lastDeleted = deletedPositions.pop();
+      if (lastDeleted && !positionsData[lastDeleted.name]) {
+        positionsData[lastDeleted.name] = lastDeleted.data;
+        renderPositions();
+      }
+    };
+
+    addPositionForm.onsubmit = (e) => {
+      e.preventDefault();
+      const name = newPositionName.value.trim();
+      if (name && !positionsData[name]) {
+        initializePosition(name);
+        newPositionName.value = "";
+        renderPositions();
+      }
+    };
+
+    exportCSVButton.onclick = () => {
+      let csv = "Position,Stage,Applicant,Remarks\n";
+      for (const position in positionsData) {
+        const { data, remarks } = positionsData[position];
+        for (const stage of stages) {
+          for (const applicant of data[stage]) {
+            const remark = remarks[applicant]?.replace(/\n/g, ' ') || "";
+            csv += `"${position}","${stage}","${applicant}","${remark}"\n`;
+          }
+        }
+      }
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = "Applicant_Report.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    saveAllButton.onclick = () => {
+      for (const position in positionsData) {
+        localStorage.setItem(`pipeline_${position}`, JSON.stringify(positionsData[position]));
+      }
+      alert("All data saved successfully!");
+    };
+
+    function loadPipeline(position) {
+      positionTitle.textContent = `Applicant Pipeline - ${position}`;
+      home.style.display = "none";
+      pipeline.style.display = "block";
+      renderBoard();
+    }
+
+    backButton.onclick = () => {
+      pipeline.style.display = "none";
+      home.style.display = "block";
+      currentPosition = null;
+    };
+
+    exportButton.onclick = () => {
+      if (!currentPosition) return;
+      const dataStr = JSON.stringify(positionsData[currentPosition], null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentPosition.replace(/\s+/g, '_')}_pipeline.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    function renderBoard() {
+      if (!currentPosition) return;
+      board.innerHTML = "";
+      const data = positionsData[currentPosition].data;
+      const remarksData = positionsData[currentPosition].remarks;
+
+      stages.forEach((stage) => {
+        const col = document.createElement("div");
+        col.className = "column";
+        col.dataset.stage = stage;
+        col.ondragover = (e) => e.preventDefault();
+        col.ondrop = (e) => {
+          const id = e.dataTransfer.getData("text");
+          const from = document.querySelector(`[data-id='${id}']`).parentElement.dataset.stage;
+          if (from !== stage) {
+            const index = data[from].indexOf(id);
+            if (index > -1) data[from].splice(index, 1);
+            data[stage].push(id);
+            renderBoard();
+          }
+        };
+
+        const header = document.createElement("h2");
+        header.textContent = stage;
+        col.appendChild(header);
+
+        data[stage].forEach((applicant) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.draggable = true;
+          card.dataset.id = applicant;
+          card.ondragstart = (e) => e.dataTransfer.setData("text", applicant);
+
+          const cardHeader = document.createElement("div");
+          cardHeader.className = "card-header";
+
+          const nameSpan = document.createElement("span");
+          nameSpan.textContent = applicant;
+
+          const delBtn = document.createElement("button");
+          delBtn.className = "delete-btn";
+          delBtn.textContent = "X";
+          delBtn.onclick = () => {
+            const index = data[stage].indexOf(applicant);
+            if (index > -1) data[stage].splice(index, 1);
+            delete remarksData[applicant];
+            renderBoard();
+          };
+
+          cardHeader.appendChild(nameSpan);
+          cardHeader.appendChild(delBtn);
+
+          const remarks = document.createElement("textarea");
+          remarks.className = "remarks";
+          remarks.placeholder = "Add remarks...";
+          remarks.value = remarksData[applicant] || "";
+          remarks.oninput = (e) => {
+            remarksData[applicant] = e.target.value;
+          };
+
+          card.appendChild(cardHeader);
+          card.appendChild(remarks);
+          col.appendChild(card);
+        });
+
+        if (stage === "Source") {
+          const form = document.createElement("form");
+          form.className = "add-form";
+          form.onsubmit = function (e) {
+            e.preventDefault();
+            const input = form.querySelector("input");
+            const value = input.value.trim();
+            if (value) {
+              data["Source"].push(value);
+              input.value = "";
+              renderBoard();
+            }
+          };
+
+          const input = document.createElement("input");
+          input.type = "text";
+          input.placeholder = "Add applicant";
+
+          const button = document.createElement("button");
+          button.type = "submit";
+          button.textContent = "Add";
+
+          form.appendChild(input);
+          form.appendChild(button);
+          col.appendChild(form);
+        }
+
+        board.appendChild(col);
+      });
+    }
+
+    ["Front Desk Officer", "Housekeeping", "Food and Beverage", "Security Officer"].forEach(name => {
+      initializePosition(name);
+    });
+    renderPositions();
+  </script>
+</body>
+</html>
